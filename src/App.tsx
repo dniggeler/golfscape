@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import coursesData from './data/golf-courses.json'
 import datasetInfo from './data/dataset-info.json'
 import SwissMap from './SwissMap.tsx'
@@ -51,7 +52,50 @@ function Icon({ name }: { name: 'pin' | 'search' | 'arrow' | 'golf' | 'close' })
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
 }
 
+type Sheet = 'peek' | 'half' | 'full'
+const SHEET_ORDER: Sheet[] = ['peek', 'half', 'full']
+const MOBILE_QUERY = '(max-width: 760px)'
+
+function useIsMobile() {
+  return useSyncExternalStore(
+    (notify) => {
+      const media = window.matchMedia(MOBILE_QUERY)
+      media.addEventListener('change', notify)
+      return () => media.removeEventListener('change', notify)
+    },
+    () => window.matchMedia(MOBILE_QUERY).matches,
+    () => false,
+  )
+}
+
+// Vertikales Ziehen eines Sheet-Griffs; ein kurzer Tipp meldet dy = 0.
+function useVerticalDrag(onEnd: (dy: number) => void) {
+  const [state, setState] = useState<{ startY: number; dy: number } | null>(null)
+
+  const handlers = {
+    onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
+      event.currentTarget.setPointerCapture(event.pointerId)
+      setState({ startY: event.clientY, dy: 0 })
+    },
+    onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
+      setState((current) => (current ? { ...current, dy: event.clientY - current.startY } : current))
+    },
+    onPointerUp: (event: ReactPointerEvent<HTMLElement>) => {
+      if (!state) return
+      const dy = event.clientY - state.startY
+      setState(null)
+      onEnd(Math.abs(dy) < 6 ? 0 : dy)
+    },
+    onPointerCancel: () => setState(null),
+  }
+
+  return { dy: state?.dy ?? 0, dragging: state !== null, handlers }
+}
+
 function App() {
+  const isMobile = useIsMobile()
+  const [sheet, setSheet] = useState<Sheet>('peek')
+  const [resetKey, setResetKey] = useState(0)
   const [query, setQuery] = useState('')
   const [countryFilter, setCountryFilter] = useState('Alle Länder')
   const [selectedCourse, setSelectedCourse] = useState<Course | undefined>()
@@ -81,10 +125,44 @@ function App() {
     })
   }, [countryFilter, query])
   const swissCount = courses.filter((course) => course.countryCode === 'CH').length
+  const detailOpen = showDetails && selectedCourse !== undefined
+
+  const openCourse = (course: Course) => {
+    setSelectedCourse(course)
+    setShowDetails(true)
+    setSheet('peek')
+  }
+
+  const sheetDrag = useVerticalDrag((dy) => {
+    const index = SHEET_ORDER.indexOf(sheet)
+    let steps = Math.round(-dy / 140)
+    if (steps === 0 && Math.abs(dy) >= 40) steps = dy < 0 ? 1 : -1
+    if (dy === 0) steps = sheet === 'peek' ? 1 : -1
+    setSheet(SHEET_ORDER[Math.min(SHEET_ORDER.length - 1, Math.max(0, index + steps))])
+  })
+
+  const detailDrag = useVerticalDrag((dy) => {
+    if (dy > 80) setShowDetails(false)
+  })
 
   return (
     <main className="app-shell">
-      <aside className="sidebar">
+      <aside
+        className={`sidebar sheet-${sheet}${detailOpen ? ' covered' : ''}${sheetDrag.dragging ? ' dragging' : ''}`}
+        style={{ '--drag': `${sheetDrag.dy}px` } as CSSProperties}
+      >
+        <button
+          type="button"
+          className="sheet-handle"
+          aria-label={sheet === 'peek' ? 'Liste öffnen' : 'Liste verkleinern'}
+          aria-expanded={sheet !== 'peek'}
+          {...sheetDrag.handlers}
+          onClick={(event) => {
+            if (event.detail === 0) setSheet(sheet === 'peek' ? 'half' : 'peek')
+          }}
+        >
+          <span />
+        </button>
         <header className="brand-row">
           <a className="brand" href="#" aria-label="Golfscape Startseite">
             <span className="brand-mark"><Icon name="golf" /></span>
@@ -104,6 +182,10 @@ function App() {
               type="search"
               placeholder="Platz, Ort oder Region suchen"
               value={query}
+              enterKeyHint="search"
+              onFocus={() => {
+                if (isMobile) setSheet('full')
+              }}
               onChange={(event) => {
                 setQuery(event.target.value)
                 setSelectedCourse(undefined)
@@ -140,10 +222,7 @@ function App() {
                 type="button"
                 className={`course-card ${selectedCourse?.id === course.id ? 'selected' : ''}`}
                 key={course.id}
-                onClick={() => {
-                  setSelectedCourse(course)
-                  setShowDetails(true)
-                }}
+                onClick={() => openCourse(course)}
               >
                 <span className={`course-thumb thumb-${index % 5}`} aria-hidden="true">
                   <span className="thumb-flag">{course.countryCode}</span>
@@ -176,36 +255,53 @@ function App() {
         </footer>
       </aside>
 
-      <section className="map-panel" aria-label="Karte der Golfplätze">
+      <section
+        className="map-panel"
+        aria-label="Karte der Golfplätze"
+        onPointerDown={() => {
+          if (sheet !== 'peek') setSheet('peek')
+        }}
+      >
         <div className="map-topbar">
+          <a className="map-brand" href="#" aria-label="Golfscape Startseite">
+            <span className="brand-mark"><Icon name="golf" /></span>
+            <span>golfscape<span className="brand-period">.</span></span>
+          </a>
           <div className="map-context">
             <span className="live-dot" />
             <span>Schweiz &amp; Umgebung</span>
             <span className="context-divider">/</span>
             <span className="context-muted">bis 50 km ab Grenze</span>
           </div>
-          <button className="map-button" type="button" onClick={() => {
+          <button className="map-button" type="button" aria-label="Übersicht anzeigen" onClick={() => {
             setCountryFilter('Alle Länder')
             setQuery('')
             setSelectedCourse(undefined)
             setShowDetails(false)
+            setResetKey((key) => key + 1)
           }}>
-            <Icon name="pin" /> Übersicht anzeigen
+            <Icon name="pin" /> <span className="map-button-label">Übersicht anzeigen</span>
           </button>
         </div>
         <SwissMap
           courses={filteredCourses}
           selectedId={selectedCourse?.id}
           playedIds={playedIds}
+          resetKey={resetKey}
+          focusOffset={isMobile && detailOpen ? 0.22 : 0}
           onSelect={(id) => {
-            setSelectedCourse(courses.find((course) => course.id === id))
-            setShowDetails(true)
+            const course = courses.find((item) => item.id === id)
+            if (course) openCourse(course)
           }}
         />
         <div className="map-legend"><span className="legend-dot" /> Offen <span className="legend-dot played" /> Gespielt ({playedIds.size}) <span className="legend-divider" /> <span className="legend-scope">CH + Grenzregion</span></div>
 
         {showDetails && selectedCourse && (
-          <aside className="detail-panel">
+          <aside
+            className={`detail-panel${detailDrag.dragging ? ' dragging' : ''}`}
+            style={detailDrag.dy > 0 ? { transform: `translateY(${detailDrag.dy}px)` } : undefined}
+          >
+            <div className="sheet-handle detail-handle" aria-hidden="true" {...detailDrag.handlers}><span /></div>
             <button className="detail-close" type="button" aria-label="Details schliessen" onClick={() => setShowDetails(false)}><Icon name="close" /></button>
             {selectedCourse.image ? (
               <img className="detail-image" src={selectedCourse.image.url} alt={`Golfplatz ${selectedCourse.name}`} />
