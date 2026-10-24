@@ -657,6 +657,248 @@ h1 em {
   font-size: 9px;
 }
 
+button.map-legend {
+  font: 9px var(--sans);
+  cursor: pointer;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+button.map-legend:active {
+  background: #eef3ed;
+}
+
+.heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.manage-played {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid #d3dcea;
+  border-radius: 20px;
+  background: #fff;
+  color: #2f6fd6;
+  font: 650 10px var(--sans);
+  letter-spacing: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.manage-played:active {
+  background: #f1f6fd;
+}
+
+.played-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(18 36 28 / 45%);
+}
+
+.played-dialog {
+  width: min(480px, 100%);
+  max-height: min(720px, 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #fff;
+  color: #263e31;
+  box-shadow: 0 20px 60px rgb(18 36 28 / 30%);
+  outline: none;
+}
+
+.played-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 10px 22px;
+}
+
+.played-header h2 {
+  margin: 0;
+  color: #203e32;
+  font-size: 19px;
+  letter-spacing: -.4px;
+}
+
+.played-header p {
+  margin: 3px 0 0;
+  color: #7a857d;
+  font-size: 12px;
+}
+
+.played-close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #405847;
+  cursor: pointer;
+}
+
+.played-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.played-tools {
+  padding: 0 22px 10px;
+}
+
+.played-search {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid #e5e8e2;
+  border-radius: 8px;
+  background: #fbfcfa;
+  color: #213d31;
+  font: 16px var(--sans);
+}
+
+.played-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.played-only {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4c6352;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.played-only input,
+.played-row input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: #2f6fd6;
+}
+
+.played-bulk {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: #2f6fd6;
+  font: 650 13px var(--sans);
+  cursor: pointer;
+}
+
+.played-bulk:disabled {
+  color: #b4bcb6;
+  cursor: default;
+}
+
+.played-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0 10px;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid #f0f1ed;
+}
+
+.played-row {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f0f1ed;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.played-row:has(input:checked) {
+  background: #f1f6fd;
+}
+
+.played-row-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.played-row-name {
+  overflow: hidden;
+  color: #294435;
+  font-size: 14px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.played-row-meta {
+  color: #7b877e;
+  font-size: 12px;
+}
+
+.played-empty {
+  padding: 28px 0;
+  color: #89948b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.played-footer {
+  padding: 12px 22px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid #f0f1ed;
+}
+
+.played-done {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  background: #2b513c;
+  color: #fff;
+  font: 650 15px var(--sans);
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .played-backdrop {
+    padding: 0;
+    place-items: end stretch;
+  }
+
+  .played-dialog {
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .manage-played {
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+}
+
 .legend-dot {
   width: 9px;
   height: 9px;
@@ -1164,9 +1406,11 @@ h1 em {
     height: 44px;
   }
 
-  .map-legend {
+  .map-legend,
+  button.map-legend {
     left: 11px;
     bottom: calc(var(--peek-h) + 34px);
+    min-height: 44px;
     padding: 8px 11px;
     font-size: 12px;
   }

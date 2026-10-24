@@ -3,6 +3,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import coursesData from './data/golf-courses.json'
 import datasetInfo from './data/dataset-info.json'
 import SwissMap from './SwissMap.tsx'
+import PlayedDialog from './PlayedDialog.tsx'
 import './App.css'
 
 type Course = {
@@ -101,11 +102,15 @@ function App() {
   const [selectedCourse, setSelectedCourse] = useState<Course | undefined>()
   const [showDetails, setShowDetails] = useState(false)
   const [playedIds, setPlayedIds] = useState<Set<string>>(loadPlayed)
+  const [showPlayedDialog, setShowPlayedDialog] = useState(false)
 
-  const togglePlayed = (id: string) => {
+  const setPlayed = (ids: string[], played: boolean) => {
     setPlayedIds((current) => {
       const next = new Set(current)
-      if (!next.delete(id)) next.add(id)
+      for (const id of ids) {
+        if (played) next.add(id)
+        else next.delete(id)
+      }
       try {
         localStorage.setItem(PLAYED_KEY, JSON.stringify([...next]))
       } catch {
@@ -114,6 +119,8 @@ function App() {
       return next
     })
   }
+
+  const togglePlayed = (id: string) => setPlayed([id], !playedIds.has(id))
 
   const countries = useMemo(() => ['Alle Länder', ...new Set(courses.map((course) => course.country))], [])
   const filteredCourses = useMemo(() => {
@@ -197,7 +204,12 @@ function App() {
 
           <div className="filter-heading">
             <span>GOLFPLÄTZE IN DER NÄHE</span>
-            <span className="result-count">{filteredCourses.length}</span>
+            <span className="heading-actions">
+              <button type="button" className="manage-played" onClick={() => setShowPlayedDialog(true)}>
+                Gespielt ({playedIds.size})
+              </button>
+              <span className="result-count">{filteredCourses.length}</span>
+            </span>
           </div>
           <div className="filter-row" role="group" aria-label="Nach Land filtern">
             {countries.map((country) => (
@@ -294,7 +306,7 @@ function App() {
             if (course) openCourse(course)
           }}
         />
-        <div className="map-legend"><span className="legend-dot" /> Offen <span className="legend-dot played" /> Gespielt ({playedIds.size}) <span className="legend-divider" /> <span className="legend-scope">CH + Grenzregion</span></div>
+        <button type="button" className="map-legend" aria-label="Gespielte Plätze verwalten" onClick={() => setShowPlayedDialog(true)}><span className="legend-dot" /> Offen <span className="legend-dot played" /> Gespielt ({playedIds.size}) <span className="legend-divider" /> <span className="legend-scope">CH + Grenzregion</span></button>
 
         {showDetails && selectedCourse && (
           <aside
@@ -338,6 +350,14 @@ function App() {
           <span>Stand: {datasetInfo.lastUpdated}</span>
         </div>
       </section>
+      {showPlayedDialog && (
+        <PlayedDialog
+          courses={courses}
+          playedIds={playedIds}
+          onSetPlayed={setPlayed}
+          onClose={() => setShowPlayedDialog(false)}
+        />
+      )}
     </main>
   )
 }
