@@ -1,9 +1,10 @@
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import coursesData from './data/golf-courses.json'
 import datasetInfo from './data/dataset-info.json'
 import SwissMap from './SwissMap.tsx'
 import PlayedDialog from './PlayedDialog.tsx'
+import { clearShareHash, parseShareHash } from './shareLink.ts'
 import './App.css'
 
 type Course = {
@@ -32,6 +33,8 @@ const courses = coursesData as Course[]
 
 const PLAYED_KEY = 'golfscape.played'
 
+const courseIds = new Set(courses.map((course) => course.id))
+const readSharedFromUrl = () => parseShareHash(window.location.hash, courseIds)
 function loadPlayed(): Set<string> {
   try {
     const stored = JSON.parse(localStorage.getItem(PLAYED_KEY) ?? '[]')
@@ -101,11 +104,24 @@ function App() {
   const [countryFilter, setCountryFilter] = useState('Alle Länder')
   const [selectedCourse, setSelectedCourse] = useState<Course | undefined>()
   const [showDetails, setShowDetails] = useState(false)
-  const [playedIds, setPlayedIds] = useState<Set<string>>(loadPlayed)
+  const [ownPlayedIds, setOwnPlayedIds] = useState<Set<string>>(loadPlayed)
+  const [sharedIds, setSharedIds] = useState<Set<string> | null>(readSharedFromUrl)
   const [showPlayedDialog, setShowPlayedDialog] = useState(false)
+  const playedIds = sharedIds ?? ownPlayedIds
+
+  useEffect(() => {
+    const onHashChange = () => setSharedIds(readSharedFromUrl())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  const closeShared = () => {
+    clearShareHash()
+    setSharedIds(null)
+  }
 
   const setPlayed = (ids: string[], played: boolean) => {
-    setPlayedIds((current) => {
+    setOwnPlayedIds((current) => {
       const next = new Set(current)
       for (const id of ids) {
         if (played) next.add(id)
@@ -120,7 +136,13 @@ function App() {
     })
   }
 
-  const togglePlayed = (id: string) => setPlayed([id], !playedIds.has(id))
+  const importShared = () => {
+    if (!sharedIds) return
+    setPlayed([...sharedIds], true)
+    closeShared()
+  }
+
+  const togglePlayed = (id: string) => setPlayed([id], !ownPlayedIds.has(id))
 
   const countries = useMemo(() => ['Alle Länder', ...new Set(courses.map((course) => course.country))], [])
   const filteredCourses = useMemo(() => {
@@ -205,9 +227,11 @@ function App() {
           <div className="filter-heading">
             <span>GOLFPLÄTZE IN DER NÄHE</span>
             <span className="heading-actions">
-              <button type="button" className="manage-played" onClick={() => setShowPlayedDialog(true)}>
-                Gespielt ({playedIds.size})
-              </button>
+              {!sharedIds && (
+                <button type="button" className="manage-played" onClick={() => setShowPlayedDialog(true)}>
+                  Gespielt ({playedIds.size})
+                </button>
+              )}
               <span className="result-count">{filteredCourses.length}</span>
             </span>
           </div>
@@ -306,7 +330,7 @@ function App() {
             if (course) openCourse(course)
           }}
         />
-        <button type="button" className="map-legend" aria-label="Gespielte Plätze verwalten" onClick={() => setShowPlayedDialog(true)}><span className="legend-dot" /> Offen <span className="legend-dot played" /> Gespielt ({playedIds.size}) <span className="legend-divider" /> <span className="legend-scope">CH + Grenzregion</span></button>
+        <button type="button" className="map-legend" aria-label="Gespielte Plätze verwalten" disabled={sharedIds !== null} onClick={() => setShowPlayedDialog(true)}><span className="legend-dot" /> Offen <span className="legend-dot played" /> Gespielt ({playedIds.size}) <span className="legend-divider" /> <span className="legend-scope">CH + Grenzregion</span></button>
 
         {showDetails && selectedCourse && (
           <aside
@@ -328,14 +352,16 @@ function App() {
                 <div><span>ANLAGE</span><strong>{selectedCourse.holes ? `${selectedCourse.holes} Löcher` : 'Golfplatz'}</strong></div>
                 <div><span>LAND</span><strong>{selectedCourse.countryCode}</strong></div>
               </div>
-              <button
-                type="button"
-                className={`played-toggle${playedIds.has(selectedCourse.id) ? ' active' : ''}`}
-                aria-pressed={playedIds.has(selectedCourse.id)}
-                onClick={() => togglePlayed(selectedCourse.id)}
-              >
-                {playedIds.has(selectedCourse.id) ? 'Als gespielt markiert ✓' : 'Als gespielt markieren'}
-              </button>
+              {!sharedIds && (
+                <button
+                  type="button"
+                  className={`played-toggle${playedIds.has(selectedCourse.id) ? ' active' : ''}`}
+                  aria-pressed={playedIds.has(selectedCourse.id)}
+                  onClick={() => togglePlayed(selectedCourse.id)}
+                >
+                  {playedIds.has(selectedCourse.id) ? 'Als gespielt markiert ✓' : 'Als gespielt markieren'}
+                </button>
+              )}
               <div className="detail-links">
                 {selectedCourse.website && <a href={selectedCourse.website} target="_blank" rel="noreferrer">Website des Clubs <Icon name="arrow" /></a>}
                 <a href={selectedCourse.sourceUrl} target="_blank" rel="noreferrer">Quelle <Icon name="arrow" /></a>
@@ -343,6 +369,16 @@ function App() {
               {selectedCourse.image && <p className="image-credit">Bild: {selectedCourse.image.attribution} · {selectedCourse.image.license}</p>}
             </div>
           </aside>
+        )}
+
+        {sharedIds && (
+          <div className="shared-banner" role="status">
+            <span className="shared-text">Geteilte Liste · {sharedIds.size} gespielte Plätze (nur Ansicht)</span>
+            <span className="shared-actions">
+              <button type="button" className="shared-import" onClick={importShared} disabled={sharedIds.size === 0}>In meine Liste übernehmen</button>
+              <button type="button" className="shared-close" onClick={closeShared}>Meine Liste</button>
+            </span>
+          </div>
         )}
 
         <div className="map-disclaimer">

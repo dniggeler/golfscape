@@ -66,6 +66,54 @@ test('multiple courses can be marked as played in one dialog', async ({ page }) 
   await expect(page.locator('.map-legend')).toContainText('Gespielt (2)')
 })
 
+test('shared link shows a read-only list that can be imported', async ({ page }) => {
+  await page.goto('./#played=aaretal,arosa,does-not-exist')
+  const banner = page.locator('.shared-banner')
+  await expect(banner).toContainText('2 gespielte Plätze')
+  await expect(page.locator('.map-legend')).toContainText('Gespielt (2)')
+  await expect(page.locator('.manage-played')).toHaveCount(0)
+
+  await banner.getByRole('button', { name: 'In meine Liste übernehmen' }).click()
+  await expect(banner).toBeHidden()
+  expect(page.url()).not.toContain('#played')
+  await expect(page.locator('.map-legend')).toContainText('Gespielt (2)')
+
+  await page.reload()
+  await expect(page.locator('.map-legend')).toContainText('Gespielt (2)')
+})
+
+test('closing a shared list restores the own selection', async ({ page }) => {
+  await page.goto('./#played=aaretal')
+  await expect(page.locator('.map-legend')).toContainText('Gespielt (1)')
+  await page.locator('.shared-banner').getByRole('button', { name: 'Meine Liste', exact: true }).click()
+  await expect(page.locator('.map-legend')).toContainText('Gespielt (0)')
+})
+
+test('share button produces a link that restores the selection', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async (data: { url: string }) => {
+        ;(window as unknown as { sharedUrl: string }).sharedUrl = data.url
+      },
+    })
+  })
+  await page.goto('./')
+  await page.locator('.sheet-handle').first().click()
+  await page.locator('.manage-played').click()
+  const dialog = page.getByRole('dialog', { name: 'Gespielte Plätze' })
+  await dialog.locator('.played-row input').nth(0).check()
+  await dialog.locator('.played-row input').nth(1).check()
+  await dialog.getByRole('button', { name: 'Link teilen' }).click()
+
+  const url = await page.evaluate(() => (window as unknown as { sharedUrl: string }).sharedUrl)
+  expect(url).toContain('#played=')
+
+  await page.evaluate(() => localStorage.clear())
+  await page.goto(url)
+  await expect(page.locator('.shared-banner')).toContainText('2 gespielte Plätze')
+})
+
 test('zoom button changes the map viewBox', async ({ page }) => {
   const before = await page.locator('.swiss-map').getAttribute('viewBox')
   await page.getByRole('button', { name: 'Vergrössern' }).click()

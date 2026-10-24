@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { buildShareUrl } from './shareLink.ts'
 
 export type PlayedCourse = {
   id: string
@@ -19,7 +20,29 @@ type Props = {
 export default function PlayedDialog({ courses, playedIds, onSetPlayed, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [onlyPlayed, setOnlyPlayed] = useState(false)
+  const [shareNotice, setShareNotice] = useState('')
+  const [fallbackUrl, setFallbackUrl] = useState('')
   const dialogRef = useRef<HTMLDivElement>(null)
+
+  const share = async () => {
+    const url = buildShareUrl(playedIds)
+    setFallbackUrl('')
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Meine gespielten Golfplätze', url })
+        return
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setShareNotice('Link kopiert')
+    } catch {
+      setShareNotice('Link zum Kopieren:')
+      setFallbackUrl(url)
+    }
+  }
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
@@ -112,7 +135,12 @@ export default function PlayedDialog({ courses, playedIds, onSetPlayed, onClose 
         </ul>
 
         <footer className="played-footer">
-          <button type="button" className="played-done" onClick={onClose}>Fertig</button>
+          {shareNotice && <p className="played-share-notice" role="status">{shareNotice}</p>}
+          {fallbackUrl && <input className="played-share-url" readOnly value={fallbackUrl} aria-label="Link" onFocus={(event) => event.currentTarget.select()} />}
+          <div className="played-footer-buttons">
+            <button type="button" className="played-share" disabled={playedIds.size === 0} onClick={share}>Link teilen</button>
+            <button type="button" className="played-done" onClick={onClose}>Fertig</button>
+          </div>
         </footer>
       </div>
     </div>

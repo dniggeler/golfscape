@@ -870,7 +870,7 @@ button.map-legend:active {
 }
 
 .played-done {
-  width: 100%;
+  flex: 1;
   min-height: 48px;
   border: 0;
   border-radius: 8px;
@@ -878,6 +878,114 @@ button.map-legend:active {
   color: #fff;
   font: 650 15px var(--sans);
   cursor: pointer;
+}
+
+.played-footer-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.played-share {
+  flex: 1;
+  min-height: 48px;
+  border: 1px solid #d3dcea;
+  border-radius: 8px;
+  background: #fff;
+  color: #2f6fd6;
+  font: 650 15px var(--sans);
+  cursor: pointer;
+}
+
+.played-share:disabled {
+  color: #b4bcb6;
+  border-color: #e5e8e2;
+  cursor: default;
+}
+
+.played-share-notice {
+  margin: 0 0 8px;
+  color: #4c6352;
+  font-size: 13px;
+}
+
+.played-share-url {
+  width: 100%;
+  height: 44px;
+  margin-bottom: 10px;
+  padding: 0 10px;
+  border: 1px solid #e5e8e2;
+  border-radius: 8px;
+  font: 16px var(--sans);
+}
+
+.shared-banner {
+  position: absolute;
+  z-index: 430;
+  top: 70px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid #cfdcf3;
+  border-radius: 8px;
+  background: rgb(241 246 253 / 97%);
+  color: #25488c;
+  box-shadow: 0 3px 12px rgb(32 55 40 / 9%);
+  font-size: 12px;
+}
+
+.shared-text {
+  font-weight: 650;
+}
+
+.shared-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.shared-actions button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #2f6fd6;
+  border-radius: 7px;
+  background: #fff;
+  color: #2f6fd6;
+  font: 650 12px var(--sans);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.shared-actions .shared-import {
+  background: #2f6fd6;
+  color: #fff;
+}
+
+.shared-actions button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+@media (max-width: 760px) {
+  .shared-banner {
+    top: calc(64px + env(safe-area-inset-top));
+    left: 11px;
+    right: 11px;
+    font-size: 13px;
+  }
+
+  .shared-actions {
+    width: 100%;
+  }
+
+  .shared-actions button {
+    flex: 1;
+    min-height: 44px;
+    font-size: 14px;
+  }
 }
 
 @media (max-width: 760px) {
