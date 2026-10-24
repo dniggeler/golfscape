@@ -246,7 +246,7 @@ function App() {
           </section>
           <div className="data-note">
             <span className="note-icon">i</span>
-            <p>Vorschau mit {courses.length} Plätzen – davon {swissCount} in der Schweiz. Der Datensatz ist noch nicht vollständig.</p>
+            <p>{courses.length} Plätze – davon {swissCount} in der Schweiz (Quelle: Swiss Golf). Koordinaten können leicht abweichen.</p>
           </div>
         </div>
         <footer className="sidebar-footer">
